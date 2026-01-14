@@ -1,0 +1,270 @@
+/* ================= GLOBAL ================= */
+body {
+  background: linear-gradient(180deg, #5f6b88, #6a748d);
+  color: #e5e7eb;
+  font-family: Inter, sans-serif;
+}
+
+.dashboard {
+  padding: 20px;
+}
+
+/* ================= KPI ================= */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.kpiCard {
+  background: linear-gradient(135deg, #1e293b, #020617);
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 0 25px rgba(56,189,248,.2);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 35px rgba(56,189,248,.35);
+}
+
+/* KPI TITLE */
+.kpiCard h4,
+.kpiCard h3 {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  letter-spacing: 0.4px;
+}
+
+/* KPI VALUE */
+.kpiCard p {
+  font-size: 24px;
+  font-weight: 700;
+  color: #facc15; /* GOLD */
+}
+
+/* ================= COMMON CARD ================= */
+.card {
+  background: linear-gradient(135deg, #24283c, #1b1f32);
+  border-radius: 14px;
+  padding: 15px;
+  height: 320px;
+  box-shadow: 0 0 25px rgba(0,0,0,.25);
+}
+
+.card h3 {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #c7d2fe; /* soft violet */
+}
+
+/* ================= CANVAS ================= */
+canvas {
+  height: 250px !important;
+}
+
+/* ================= ROW 2 ================= */
+.gridRow2 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.card.large,
+.card.small {
+  height: 360px;
+}
+
+/* ================= ROW 3 ================= */
+.gridRow3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 15px;
+}
+
+/* ================= MAP ================= */
+.mapCard {
+  padding: 0;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  border-radius: 14px;
+}
+
+/* ================= FILTER DROPDOWN ================= */
+.filterCard {
+  background: linear-gradient(135deg, #1e293b, #020617);
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 0 25px rgba(56,189,248,.2);
+}
+
+.filterCard h4 {
+  color: #ffffff;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.filterCard select {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #38bdf8;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+
+.filterCard select:hover {
+  border-color: #38bdf8;
+}
+
+.filterCard select option {
+  background: #020617;
+  color: #e5e7eb;
+}
+
+
+
+
+
+/* ================= MOBILE RESPONSIVE ================= */
+@media (max-width: 1024px) {
+
+  /* KPI GRID */
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* ROW 2 */
+  .gridRow2 {
+    grid-template-columns: 1fr;
+  }
+
+  .card.large,
+  .card.small {
+    height: auto;
+  }
+
+  /* ROW 3 */
+  .gridRow3 {
+    grid-template-columns: 1fr;
+  }
+
+  #map {
+    height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+
+  /* DASHBOARD PADDING */
+  .dashboard {
+    padding: 12px;
+  }
+
+  /* KPI GRID */
+  .kpiGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpiCard {
+    padding: 16px;
+  }
+
+  .kpiCard p {
+    font-size: 20px;
+  }
+
+  /* FILTER CARD */
+  .filterCard {
+    padding: 16px;
+  }
+
+  /* CARDS */
+  .card {
+    height: auto;
+    padding: 14px;
+  }
+
+  canvas {
+    height: 220px !important;
+  }
+
+  .card h3 {
+    font-size: 13px;
+  }
+
+  /* MAP */
+  #map {
+    height: 260px;
+    border-radius: 12px;
+  }
+}
+
+
+/* ================= MOBILE RESPONSIVE FIX ================= */
+@media (max-width: 768px) {
+
+  .kpiGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .gridRow2 {
+    grid-template-columns: 1fr;
+  }
+
+  .gridRow3 {
+    grid-template-columns: 1fr;
+  }
+
+  .card,
+  .card.large,
+  .card.small {
+    height: auto;
+    min-height: 300px;
+  }
+
+  canvas {
+    height: 220px !important;
+  }
+
+  #map {
+    height: 300px;
+  }
+
+  .filterCard {
+    grid-column: span 2;
+  }
+}
+
+/* EXTRA SMALL DEVICES */
+@media (max-width: 480px) {
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterCard {
+    grid-column: span 1;
+  }
+
+  .card h3 {
+    font-size: 13px;
+  }
+
+  .kpiCard p {
+    font-size: 18px;
+  }
+}
