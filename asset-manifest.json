@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/REPO-NAME/static/css/main.39800276.css",
-    "main.js": "/REPO-NAME/static/js/main.df029c9a.js",
-    "static/js/453.de518a74.chunk.js": "/REPO-NAME/static/js/453.de518a74.chunk.js",
-    "index.html": "/REPO-NAME/index.html",
-    "main.39800276.css.map": "/REPO-NAME/static/css/main.39800276.css.map",
-    "main.df029c9a.js.map": "/REPO-NAME/static/js/main.df029c9a.js.map",
-    "453.de518a74.chunk.js.map": "/REPO-NAME/static/js/453.de518a74.chunk.js.map"
+    "main.css": "/Booking-Dashboard/static/css/main.39800276.css",
+    "main.js": "/Booking-Dashboard/static/js/main.440b0efa.js",
+    "static/js/453.de518a74.chunk.js": "/Booking-Dashboard/static/js/453.de518a74.chunk.js",
+    "index.html": "/Booking-Dashboard/index.html",
+    "main.39800276.css.map": "/Booking-Dashboard/static/css/main.39800276.css.map",
+    "main.440b0efa.js.map": "/Booking-Dashboard/static/js/main.440b0efa.js.map",
+    "453.de518a74.chunk.js.map": "/Booking-Dashboard/static/js/453.de518a74.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.39800276.css",
-    "static/js/main.df029c9a.js"
+    "static/js/main.440b0efa.js"
   ]
 }
