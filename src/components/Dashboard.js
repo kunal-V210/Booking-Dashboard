@@ -36,11 +36,12 @@ export default function Dashboard() {
 
   /* ================= FETCH DATA ================= */
   useEffect(() => {
-    fetch("/bookings-analytics.json")
-      .then(res => res.json())
-      .then(json => setData(json))
-      .catch(err => console.error(err));
-  }, []);
+  fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
+    .then(res => res.json())
+    .then(json => setData(json))
+    .catch(err => console.error("JSON load error:", err));
+}, []);
+
 
   /* ================= HELPERS ================= */
   const safeDocs = (cb) => {
@@ -347,3 +348,6 @@ export default function Dashboard() {
     </div>
   );
 }
+
+
+

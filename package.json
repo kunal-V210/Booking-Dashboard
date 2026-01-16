@@ -1,8 +1,5 @@
-  
 {
-  "homepage": "https://YOUR_USERNAME.github.io/my-react-dashboard",
-
-  
+  "homepage": "https://kunal-v210.github.io/Booking-Dashboard",
   "name": "booking-app",
   "version": "0.1.0",
   "private": true,
@@ -29,7 +26,6 @@
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
-
   },
   "eslintConfig": {
     "extends": [
