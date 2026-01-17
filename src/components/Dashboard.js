@@ -271,17 +271,30 @@ export default function Dashboard() {
 };
 
 
+
   /* ================= UPDATE DASHBOARD ================= */
-  useEffect(() => {
-    if (!data.length) return;
-    calculateSummary();
-    drawYearChart();
-    drawStatusChart();
-    drawTopCityChart();
-    drawPaymentChart();
-    drawMonthlyChart();
-    drawMap();
-  }, [data, selectedCity]);
+useEffect(() => {
+  if (!data.length) return;
+
+  calculateSummary();
+  drawYearChart();
+  drawStatusChart();
+  drawTopCityChart();
+  drawPaymentChart();
+  drawMonthlyChart();
+  drawMap();
+}, [
+  data,
+  selectedCity,
+  calculateSummary,
+  drawYearChart,
+  drawStatusChart,
+  drawTopCityChart,
+  drawPaymentChart,
+  drawMonthlyChart,
+  drawMap
+]);
+
 
   /* ================= JSX ================= */
   return (
