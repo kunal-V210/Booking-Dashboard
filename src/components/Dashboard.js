@@ -36,31 +36,27 @@ export default function Dashboard() {
 
   /* ================= FETCH DATA ================= */
   useEffect(() => {
-  fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
-    .then(res => res.json())
-    .then(json => setData(json))
-    .catch(err => console.error("JSON load error:", err));
-}, []);
+    fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
+      .then(res => res.json())
+      .then(json => setData(json))
+      .catch(err => console.error("JSON load error:", err));
+  }, []);
 
+  /* ================= UPDATE DASHBOARD ================= */
+  useEffect(() => {
+    if (!data.length) return;
 
-  /* ================= HELPERS ================= */
-  const safeDocs = (cb) => {
-    data.forEach(item =>
-      item.documents?.forEach(doc => {
-        if (selectedCity !== "ALL" && doc.city !== selectedCity) return;
-        cb(doc);
-      })
-    );
-  };
+    /* SAFE ITERATOR */
+    const safeDocs = (cb) => {
+      data.forEach(item =>
+        item.documents?.forEach(doc => {
+          if (selectedCity !== "ALL" && doc.city !== selectedCity) return;
+          cb(doc);
+        })
+      );
+    };
 
-  const getCities = () => {
-    const set = new Set();
-    data.forEach(i => i.documents?.forEach(d => d.city && set.add(d.city)));
-    return ["ALL", ...Array.from(set)];
-  };
-
-  /* ================= KPI CALCULATION ================= */
-  const calculateSummary = () => {
+    /* ===== KPI ===== */
     let totalOrders = 0;
     let profit = 0;
     let cancelled = 0;
@@ -68,239 +64,162 @@ export default function Dashboard() {
 
     safeDocs(doc => {
       totalOrders++;
-
-      if (doc.orderAmount) {
-        profit += Number(doc.orderAmount);
-      }
-
+      if (doc.orderAmount) profit += Number(doc.orderAmount);
       if (doc.bookingStatus === "CANCELLED") cancelled++;
       if (doc.bookingStatus === "RESCHEDULED") rescheduled++;
     });
 
     setSummary({ totalOrders, profit, cancelled, rescheduled });
-  };
 
-  /* ================= CHART OPTIONS ================= */
-  const commonLegend = {
-    legend: {
-      display: true,
-      position: "bottom",
-      labels: {
-        color: "#e5e7eb",
-        font: { size: 11 }
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { color: "#e5e7eb", font: { size: 11 } }
+        }
       }
-    }
-  };
+    };
 
-  /* ================= CHARTS ================= */
-
-  const drawYearChart = () => {
+    /* ===== YEAR CHART ===== */
     charts.current.year?.destroy();
-    const map = {};
-
+    const yearMap = {};
     safeDocs(d => {
       const y = new Date(d?.dateTime?.$date).getFullYear();
-      if (y) map[y] = (map[y] || 0) + 1;
+      if (y) yearMap[y] = (yearMap[y] || 0) + 1;
     });
 
     charts.current.year = new Chart(yearRef.current, {
       type: "bar",
       data: {
-        labels: Object.keys(map),
+        labels: Object.keys(yearMap),
         datasets: [{
           label: "Orders",
-          data: Object.values(map),
+          data: Object.values(yearMap),
           backgroundColor: "#38bdf8",
-          borderRadius: 8
+          borderRadius: 6
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: commonLegend
-      }
+      options: commonOptions
     });
-  };
 
-  const drawStatusChart = () => {
+    /* ===== STATUS CHART ===== */
     charts.current.status?.destroy();
-    const map = {};
-
+    const statusMap = {};
     safeDocs(d => {
       if (d.bookingStatus)
-        map[d.bookingStatus] = (map[d.bookingStatus] || 0) + 1;
+        statusMap[d.bookingStatus] = (statusMap[d.bookingStatus] || 0) + 1;
     });
 
     charts.current.status = new Chart(statusRef.current, {
       type: "doughnut",
       data: {
-        labels: Object.keys(map),
+        labels: Object.keys(statusMap),
         datasets: [{
-          data: Object.values(map),
+          data: Object.values(statusMap),
           backgroundColor: ["#22c55e", "#ef4444", "#facc15"]
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "65%",
-        plugins: commonLegend
-      }
+      options: commonOptions
     });
-  };
 
-  const drawTopCityChart = () => {
+    /* ===== TOP CITY CHART ===== */
     charts.current.city?.destroy();
-    const map = {};
-
+    const cityMap = {};
     safeDocs(d => {
-      if (d.city) map[d.city] = (map[d.city] || 0) + 1;
+      if (d.city) cityMap[d.city] = (cityMap[d.city] || 0) + 1;
     });
 
     charts.current.city = new Chart(cityRef.current, {
       type: "bar",
       data: {
-        labels: Object.keys(map),
+        labels: Object.keys(cityMap),
         datasets: [{
-          data: Object.values(map),
+          data: Object.values(cityMap),
           backgroundColor: "#818cf8",
           borderRadius: 6
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: commonLegend
-      }
+      options: commonOptions
     });
-  };
 
-  const drawPaymentChart = () => {
+    /* ===== PAYMENT CHART ===== */
     charts.current.payment?.destroy();
-    const map = {};
-
+    const payMap = {};
     safeDocs(d => {
       if (d.paymentMethod)
-        map[d.paymentMethod] = (map[d.paymentMethod] || 0) + 1;
+        payMap[d.paymentMethod] = (payMap[d.paymentMethod] || 0) + 1;
     });
 
     charts.current.payment = new Chart(paymentRef.current, {
       type: "bar",
       data: {
-        labels: Object.keys(map),
+        labels: Object.keys(payMap),
         datasets: [{
-          data: Object.values(map),
+          data: Object.values(payMap),
           backgroundColor: "#fb7185",
           borderRadius: 6
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: commonLegend
-      }
+      options: commonOptions
     });
-  };
 
-  const drawMonthlyChart = () => {
+    /* ===== MONTHLY CHART ===== */
     charts.current.month?.destroy();
-    const map = {};
-
+    const monthMap = {};
     safeDocs(d => {
       const dt = d?.dateTime?.$date;
       if (!dt) return;
-      const key = new Date(dt).toLocaleString("en", {
-        month: "short",
-        year: "numeric"
-      });
-      map[key] = (map[key] || 0) + 1;
+      const key = new Date(dt).toLocaleString("en", { month: "short", year: "numeric" });
+      monthMap[key] = (monthMap[key] || 0) + 1;
     });
 
     charts.current.month = new Chart(monthRef.current, {
       type: "line",
       data: {
-        labels: Object.keys(map),
+        labels: Object.keys(monthMap),
         datasets: [{
           label: "Orders",
-          data: Object.values(map),
+          data: Object.values(monthMap),
           borderColor: "#22d3ee",
-          tension: 0.4,
-          pointRadius: 3
+          tension: 0.4
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: commonLegend
-      }
+      options: commonOptions
     });
+
+    /* ===== MAP ===== */
+    if (mapInstance.current) mapInstance.current.remove();
+
+    mapInstance.current = L.map("map").setView([22.5, 78.9], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+      .addTo(mapInstance.current);
+
+    Object.entries(cityMap).forEach(([city, count]) => {
+      if (!cityLatLng[city]) return;
+      L.circleMarker(cityLatLng[city], {
+        radius: Math.sqrt(count) * 3,
+        color: "#38bdf8",
+        fillOpacity: 0.7
+      })
+        .addTo(mapInstance.current)
+        .bindTooltip(`${city}: ${count}`);
+    });
+
+  }, [data, selectedCity]);
+
+  /* ================= CITIES ================= */
+  const getCities = () => {
+    const set = new Set();
+    data.forEach(i => i.documents?.forEach(d => d.city && set.add(d.city)));
+    return ["ALL", ...Array.from(set)];
   };
-
-  const drawMap = () => {
-  if (!document.getElementById("map")) return;
-
-  if (mapInstance.current) {
-    mapInstance.current.remove();
-    mapInstance.current = null;
-  }
-
-  mapInstance.current = L.map("map", {
-    scrollWheelZoom: false,
-    dragging: !L.Browser.mobile
-  }).setView([22.5, 78.9], 5);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: ""
-  }).addTo(mapInstance.current);
-
-  const cityCount = {};
-  safeDocs(d => {
-    if (d.city) cityCount[d.city] = (cityCount[d.city] || 0) + 1;
-  });
-
-  Object.entries(cityCount).forEach(([city, count]) => {
-    if (!cityLatLng[city]) return;
-    L.circleMarker(cityLatLng[city], {
-      radius: Math.sqrt(count) * 3,
-      color: "#38bdf8",
-      fillOpacity: 0.7
-    })
-      .addTo(mapInstance.current)
-      .bindTooltip(`${city}: ${count}`);
-  });
-};
-
-
-
-  /* ================= UPDATE DASHBOARD ================= */
-useEffect(() => {
-  if (!data.length) return;
-
-  calculateSummary();
-  drawYearChart();
-  drawStatusChart();
-  drawTopCityChart();
-  drawPaymentChart();
-  drawMonthlyChart();
-  drawMap();
-}, [
-  data,
-  selectedCity,
-  calculateSummary,
-  drawYearChart,
-  drawStatusChart,
-  drawTopCityChart,
-  drawPaymentChart,
-  drawMonthlyChart,
-  drawMap
-]);
-
 
   /* ================= JSX ================= */
   return (
     <div className="dashboard">
 
-      {/* KPI + FILTER */}
       <div className="kpiGrid">
         <div className="kpiCard">
           <h4>Total Orders</h4>
@@ -327,7 +246,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ROW 2 */}
       <div className="gridRow2">
         <div className="card large">
           <h3>Monthly Orders</h3>
@@ -340,7 +258,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ROW 3 */}
       <div className="gridRow3">
         <div className="card">
           <h3>Booking Status</h3>
@@ -354,13 +271,10 @@ useEffect(() => {
 
         <div className="card mapCard">
           <h3>Geography Based Traffic</h3>
-          <div id="map"></div>
+          <div id="map" />
         </div>
       </div>
 
     </div>
   );
 }
-
-
-
