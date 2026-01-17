@@ -4,7 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../App.css";
 
-/* CITY COORDINATES */
+/* ================= CITY COORDINATES ================= */
 const cityLatLng = {
   Mumbai: [19.076, 72.8777],
   Delhi: [28.7041, 77.1025],
@@ -15,6 +15,7 @@ const cityLatLng = {
 };
 
 export default function Dashboard() {
+  /* ================= STATE ================= */
   const [data, setData] = useState([]);
   const [selectedCity, setSelectedCity] = useState("ALL");
   const [summary, setSummary] = useState({
@@ -24,6 +25,7 @@ export default function Dashboard() {
     rescheduled: 0,
   });
 
+  /* ================= REFS ================= */
   const yearRef = useRef(null);
   const statusRef = useRef(null);
   const paymentRef = useRef(null);
@@ -32,57 +34,59 @@ export default function Dashboard() {
   const charts = useRef({});
   const mapInstance = useRef(null);
 
-  /* ===== FETCH JSON ===== */
+  /* ================= FETCH DATA ================= */
   useEffect(() => {
-    fetch("/bookings-analytics.json")
-      .then(res => res.json())
-      .then(setData)
-      .catch(console.error);
+    fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
+      .then((res) => res.json())
+      .then((json) => setData(json))
+      .catch((err) => console.error("JSON error:", err));
   }, []);
 
-  /* ===== DASHBOARD LOGIC (ALL INSIDE ONE EFFECT) ===== */
+  /* ================= DASHBOARD LOGIC ================= */
   useEffect(() => {
     if (!data.length) return;
 
+    /* SAFE DOC ITERATOR */
     const safeDocs = (cb) => {
-      data.forEach(item =>
-        item.documents?.forEach(doc => {
+      data.forEach((item) =>
+        item.documents?.forEach((doc) => {
           if (selectedCity !== "ALL" && doc.city !== selectedCity) return;
           cb(doc);
         })
       );
     };
 
-    /* ===== KPI ===== */
+    /* ================= KPI ================= */
     let totalOrders = 0;
     let profit = 0;
     let cancelled = 0;
     let rescheduled = 0;
 
-    safeDocs(d => {
+    safeDocs((doc) => {
       totalOrders++;
-      profit += Number(d.orderAmount || 0);
-      if (d.bookingStatus === "CANCELLED") cancelled++;
-      if (d.bookingStatus === "RESCHEDULED") rescheduled++;
+      if (doc.orderAmount) profit += Number(doc.orderAmount);
+      if (doc.bookingStatus === "CANCELLED") cancelled++;
+      if (doc.bookingStatus === "RESCHEDULED") rescheduled++;
     });
 
     setSummary({ totalOrders, profit, cancelled, rescheduled });
 
+    /* ================= COMMON OPTIONS ================= */
     const options = {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
           position: "bottom",
-          labels: { color: "#e5e7eb", font: { size: 11 } }
-        }
-      }
+          labels: { color: "#e5e7eb", font: { size: 11 } },
+        },
+      },
     };
 
-    /* ===== YEAR CHART ===== */
+    /* ================= YEAR CHART ================= */
     charts.current.year?.destroy();
     const yearMap = {};
-    safeDocs(d => {
+    safeDocs((d) => {
       const y = new Date(d?.dateTime?.$date).getFullYear();
       if (y) yearMap[y] = (yearMap[y] || 0) + 1;
     });
@@ -91,44 +95,73 @@ export default function Dashboard() {
       type: "bar",
       data: {
         labels: Object.keys(yearMap),
-        datasets: [{ data: Object.values(yearMap), backgroundColor: "#38bdf8" }]
+        datasets: [
+          {
+            label: "Orders",
+            data: Object.values(yearMap),
+            backgroundColor: "#38bdf8",
+            borderRadius: 6,
+          },
+        ],
       },
-      options
+      options,
     });
 
-    /* ===== STATUS CHART ===== */
+    /* ================= STATUS CHART ================= */
     charts.current.status?.destroy();
     const statusMap = {};
-    safeDocs(d => statusMap[d.bookingStatus] = (statusMap[d.bookingStatus] || 0) + 1);
+    safeDocs((d) => {
+      if (d.bookingStatus)
+        statusMap[d.bookingStatus] =
+          (statusMap[d.bookingStatus] || 0) + 1;
+    });
 
     charts.current.status = new Chart(statusRef.current, {
       type: "doughnut",
       data: {
         labels: Object.keys(statusMap),
-        datasets: [{ data: Object.values(statusMap) }]
+        datasets: [
+          {
+            data: Object.values(statusMap),
+            backgroundColor: ["#22c55e", "#ef4444", "#facc15"],
+          },
+        ],
       },
-      options
+      options,
     });
 
-    /* ===== PAYMENT ===== */
+    /* ================= PAYMENT CHART ================= */
     charts.current.payment?.destroy();
     const payMap = {};
-    safeDocs(d => payMap[d.paymentMethod] = (payMap[d.paymentMethod] || 0) + 1);
+    safeDocs((d) => {
+      if (d.paymentMethod)
+        payMap[d.paymentMethod] = (payMap[d.paymentMethod] || 0) + 1;
+    });
 
     charts.current.payment = new Chart(paymentRef.current, {
       type: "bar",
       data: {
         labels: Object.keys(payMap),
-        datasets: [{ data: Object.values(payMap), backgroundColor: "#fb7185" }]
+        datasets: [
+          {
+            data: Object.values(payMap),
+            backgroundColor: "#fb7185",
+          },
+        ],
       },
-      options
+      options,
     });
 
-    /* ===== MONTHLY ===== */
+    /* ================= MONTH CHART ================= */
     charts.current.month?.destroy();
     const monthMap = {};
-    safeDocs(d => {
-      const key = new Date(d?.dateTime?.$date).toLocaleString("en", { month: "short", year: "numeric" });
+    safeDocs((d) => {
+      const dt = d?.dateTime?.$date;
+      if (!dt) return;
+      const key = new Date(dt).toLocaleString("en", {
+        month: "short",
+        year: "numeric",
+      });
       monthMap[key] = (monthMap[key] || 0) + 1;
     });
 
@@ -136,47 +169,71 @@ export default function Dashboard() {
       type: "line",
       data: {
         labels: Object.keys(monthMap),
-        datasets: [{ data: Object.values(monthMap), borderColor: "#22d3ee" }]
+        datasets: [
+          {
+            label: "Orders",
+            data: Object.values(monthMap),
+            borderColor: "#22d3ee",
+            tension: 0.4,
+          },
+        ],
       },
-      options
+      options,
     });
 
-    /* ===== MAP ===== */
-    if (mapInstance.current) mapInstance.current.remove();
+    /* ================= MAP ================= */
+    if (!mapRef.current) return;
+
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+    }
+
     mapInstance.current = L.map(mapRef.current).setView([22.5, 78.9], 5);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(mapInstance.current);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+      mapInstance.current
+    );
 
-    const cityCount = {};
-    safeDocs(d => cityCount[d.city] = (cityCount[d.city] || 0) + 1);
-
-    Object.entries(cityCount).forEach(([city, count]) => {
+    Object.entries(yearMap).forEach(([city, count]) => {
       if (!cityLatLng[city]) return;
       L.circleMarker(cityLatLng[city], {
         radius: Math.sqrt(count) * 3,
-        color: "#38bdf8"
+        color: "#38bdf8",
+        fillOpacity: 0.7,
       }).addTo(mapInstance.current);
     });
-
   }, [data, selectedCity]);
 
-  const cities = ["ALL", ...new Set(data.flatMap(i => i.documents?.map(d => d.city)).filter(Boolean))];
+  /* ================= CITIES ================= */
+  const cities = ["ALL", ...new Set(
+    data.flatMap((i) => i.documents?.map((d) => d.city)).filter(Boolean)
+  )];
 
+  /* ================= JSX ================= */
   return (
     <div className="dashboard">
-      <h2>Booking Dashboard</h2>
-
-      <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-        {cities.map(c => <option key={c}>{c}</option>)}
-      </select>
-
-      <div className="grid">
-        <canvas ref={monthRef} />
-        <canvas ref={paymentRef} />
-        <canvas ref={statusRef} />
-        <canvas ref={yearRef} />
-        <div ref={mapRef} style={{ height: 300 }} />
+      {/* KPI */}
+      <div className="kpiGrid">
+        <div className="kpiCard">Orders: {summary.totalOrders}</div>
+        <div className="kpiCard">Profit: ₹{summary.profit}</div>
+        <div className="kpiCard">Cancelled: {summary.cancelled}</div>
+        <div className="kpiCard">
+          <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
+            {cities.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {/* CHARTS */}
+      <canvas ref={monthRef} />
+      <canvas ref={paymentRef} />
+      <canvas ref={statusRef} />
+      <canvas ref={yearRef} />
+
+      {/* MAP */}
+      <div ref={mapRef} style={{ height: "400px" }} />
     </div>
   );
 }
