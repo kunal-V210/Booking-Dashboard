@@ -15,78 +15,42 @@ const cityLatLng = {
 };
 
 export default function Dashboard() {
-  /* ================= STATE ================= */
   const [data, setData] = useState([]);
   const [selectedCity, setSelectedCity] = useState("ALL");
-  const [summary, setSummary] = useState({
-    totalOrders: 0,
-    profit: 0,
-    cancelled: 0,
-    rescheduled: 0,
-  });
 
-  /* ================= REFS ================= */
-  const yearRef = useRef(null);
-  const statusRef = useRef(null);
-  const cityRef = useRef(null);
-  const paymentRef = useRef(null);
-  const monthRef = useRef(null);
-  const mapInstance = useRef(null);
+  const yearRef = useRef();
+  const statusRef = useRef();
+  const paymentRef = useRef();
+  const monthRef = useRef();
+  const mapRef = useRef(null);
   const charts = useRef({});
 
-  /* ================= FETCH DATA ================= */
+  /* ================= FETCH JSON ================= */
   useEffect(() => {
     fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
       .then(res => res.json())
-      .then(json => setData(json))
-      .catch(err => console.error("JSON load error:", err));
+      .then(setData)
+      .catch(err => console.error("JSON error:", err));
   }, []);
 
-  /* ================= UPDATE DASHBOARD ================= */
+  /* ================= DASHBOARD LOGIC ================= */
   useEffect(() => {
     if (!data.length) return;
 
-    /* SAFE ITERATOR */
-    const safeDocs = (cb) => {
-      data.forEach(item =>
-        item.documents?.forEach(doc => {
-          if (selectedCity !== "ALL" && doc.city !== selectedCity) return;
-          cb(doc);
-        })
-      );
-    };
+    const docs = [];
+    data.forEach(i =>
+      i.documents?.forEach(d => {
+        if (selectedCity === "ALL" || d.city === selectedCity) docs.push(d);
+      })
+    );
 
-    /* ===== KPI ===== */
-    let totalOrders = 0;
-    let profit = 0;
-    let cancelled = 0;
-    let rescheduled = 0;
+    /* DESTROY OLD CHARTS */
+    Object.values(charts.current).forEach(c => c?.destroy());
 
-    safeDocs(doc => {
-      totalOrders++;
-      if (doc.orderAmount) profit += Number(doc.orderAmount);
-      if (doc.bookingStatus === "CANCELLED") cancelled++;
-      if (doc.bookingStatus === "RESCHEDULED") rescheduled++;
-    });
-
-    setSummary({ totalOrders, profit, cancelled, rescheduled });
-
-    const commonOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-          labels: { color: "#e5e7eb", font: { size: 11 } }
-        }
-      }
-    };
-
-    /* ===== YEAR CHART ===== */
-    charts.current.year?.destroy();
+    /* ===== YEAR ===== */
     const yearMap = {};
-    safeDocs(d => {
-      const y = new Date(d?.dateTime?.$date).getFullYear();
+    docs.forEach(d => {
+      const y = new Date(d.dateTime?.$date).getFullYear();
       if (y) yearMap[y] = (yearMap[y] || 0) + 1;
     });
 
@@ -94,20 +58,13 @@ export default function Dashboard() {
       type: "bar",
       data: {
         labels: Object.keys(yearMap),
-        datasets: [{
-          label: "Orders",
-          data: Object.values(yearMap),
-          backgroundColor: "#38bdf8",
-          borderRadius: 6
-        }]
-      },
-      options: commonOptions
+        datasets: [{ data: Object.values(yearMap), backgroundColor: "#38bdf8" }]
+      }
     });
 
-    /* ===== STATUS CHART ===== */
-    charts.current.status?.destroy();
+    /* ===== STATUS ===== */
     const statusMap = {};
-    safeDocs(d => {
+    docs.forEach(d => {
       if (d.bookingStatus)
         statusMap[d.bookingStatus] = (statusMap[d.bookingStatus] || 0) + 1;
     });
@@ -116,38 +73,13 @@ export default function Dashboard() {
       type: "doughnut",
       data: {
         labels: Object.keys(statusMap),
-        datasets: [{
-          data: Object.values(statusMap),
-          backgroundColor: ["#22c55e", "#ef4444", "#facc15"]
-        }]
-      },
-      options: commonOptions
+        datasets: [{ data: Object.values(statusMap) }]
+      }
     });
 
-    /* ===== TOP CITY CHART ===== */
-    charts.current.city?.destroy();
-    const cityMap = {};
-    safeDocs(d => {
-      if (d.city) cityMap[d.city] = (cityMap[d.city] || 0) + 1;
-    });
-
-    charts.current.city = new Chart(cityRef.current, {
-      type: "bar",
-      data: {
-        labels: Object.keys(cityMap),
-        datasets: [{
-          data: Object.values(cityMap),
-          backgroundColor: "#818cf8",
-          borderRadius: 6
-        }]
-      },
-      options: commonOptions
-    });
-
-    /* ===== PAYMENT CHART ===== */
-    charts.current.payment?.destroy();
+    /* ===== PAYMENT ===== */
     const payMap = {};
-    safeDocs(d => {
+    docs.forEach(d => {
       if (d.paymentMethod)
         payMap[d.paymentMethod] = (payMap[d.paymentMethod] || 0) + 1;
     });
@@ -156,20 +88,14 @@ export default function Dashboard() {
       type: "bar",
       data: {
         labels: Object.keys(payMap),
-        datasets: [{
-          data: Object.values(payMap),
-          backgroundColor: "#fb7185",
-          borderRadius: 6
-        }]
-      },
-      options: commonOptions
+        datasets: [{ data: Object.values(payMap), backgroundColor: "#fb7185" }]
+      }
     });
 
-    /* ===== MONTHLY CHART ===== */
-    charts.current.month?.destroy();
+    /* ===== MONTH ===== */
     const monthMap = {};
-    safeDocs(d => {
-      const dt = d?.dateTime?.$date;
+    docs.forEach(d => {
+      const dt = d.dateTime?.$date;
       if (!dt) return;
       const key = new Date(dt).toLocaleString("en", { month: "short", year: "numeric" });
       monthMap[key] = (monthMap[key] || 0) + 1;
@@ -179,101 +105,46 @@ export default function Dashboard() {
       type: "line",
       data: {
         labels: Object.keys(monthMap),
-        datasets: [{
-          label: "Orders",
-          data: Object.values(monthMap),
-          borderColor: "#22d3ee",
-          tension: 0.4
-        }]
-      },
-      options: commonOptions
+        datasets: [{ data: Object.values(monthMap), borderColor: "#22d3ee" }]
+      }
     });
 
     /* ===== MAP ===== */
-    if (mapInstance.current) mapInstance.current.remove();
+    if (mapRef.current) {
+      mapRef.current.remove();
+    }
 
-    mapInstance.current = L.map("map").setView([22.5, 78.9], 5);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-      .addTo(mapInstance.current);
+    mapRef.current = L.map("map").setView([22.5, 78.9], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(mapRef.current);
 
-    Object.entries(cityMap).forEach(([city, count]) => {
+    Object.entries(payMap).forEach(([city, count]) => {
       if (!cityLatLng[city]) return;
       L.circleMarker(cityLatLng[city], {
-        radius: Math.sqrt(count) * 3,
+        radius: Math.sqrt(count) * 4,
         color: "#38bdf8",
-        fillOpacity: 0.7
+        fillOpacity: 0.6
       })
-        .addTo(mapInstance.current)
+        .addTo(mapRef.current)
         .bindTooltip(`${city}: ${count}`);
     });
 
   }, [data, selectedCity]);
 
-  /* ================= CITIES ================= */
-  const getCities = () => {
-    const set = new Set();
-    data.forEach(i => i.documents?.forEach(d => d.city && set.add(d.city)));
-    return ["ALL", ...Array.from(set)];
-  };
+  const cities = ["ALL", ...new Set(data.flatMap(i => i.documents?.map(d => d.city)))];
 
-  /* ================= JSX ================= */
   return (
     <div className="dashboard">
 
-      <div className="kpiGrid">
-        <div className="kpiCard">
-          <h4>Total Orders</h4>
-          <p>{summary.totalOrders}</p>
-        </div>
+      <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+        {cities.map(c => <option key={c}>{c}</option>)}
+      </select>
 
-        <div className="kpiCard">
-          <h4>Total Profit</h4>
-          <p>₹ {summary.profit.toLocaleString()}</p>
-        </div>
+      <canvas ref={monthRef} />
+      <canvas ref={paymentRef} />
+      <canvas ref={statusRef} />
+      <canvas ref={yearRef} />
 
-        <div className="kpiCard">
-          <h4>Cancelled</h4>
-          <p>{summary.cancelled}</p>
-        </div>
-
-        <div className="kpiCard filterCard">
-          <h4>Filter by City</h4>
-          <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-            {getCities().map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="gridRow2">
-        <div className="card large">
-          <h3>Monthly Orders</h3>
-          <canvas ref={monthRef} />
-        </div>
-
-        <div className="card small">
-          <h3>Payment Method</h3>
-          <canvas ref={paymentRef} />
-        </div>
-      </div>
-
-      <div className="gridRow3">
-        <div className="card">
-          <h3>Booking Status</h3>
-          <canvas ref={statusRef} />
-        </div>
-
-        <div className="card">
-          <h3>Orders by Year</h3>
-          <canvas ref={yearRef} />
-        </div>
-
-        <div className="card mapCard">
-          <h3>Geography Based Traffic</h3>
-          <div id="map" />
-        </div>
-      </div>
+      <div id="map" style={{ height: "350px", marginTop: "20px" }} />
 
     </div>
   );
