@@ -15,137 +15,352 @@ const cityLatLng = {
 };
 
 export default function Dashboard() {
+  /* ================= STATE ================= */
   const [data, setData] = useState([]);
   const [selectedCity, setSelectedCity] = useState("ALL");
+  const [summary, setSummary] = useState({
+    totalOrders: 0,
+    profit: 0,
+    cancelled: 0,
+    rescheduled: 0,
+  });
 
-  const yearRef = useRef();
-  const statusRef = useRef();
-  const paymentRef = useRef();
-  const monthRef = useRef();
-  const mapRef = useRef(null);
+  /* ================= REFS ================= */
+  const yearRef = useRef(null);
+  const statusRef = useRef(null);
+  const cityRef = useRef(null);
+  const paymentRef = useRef(null);
+  const monthRef = useRef(null);
+  const mapInstance = useRef(null);
   const charts = useRef({});
 
-  /* ================= FETCH JSON ================= */
+  /* ================= FETCH DATA ================= */
   useEffect(() => {
-    fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
-      .then(res => res.json())
-      .then(setData)
-      .catch(err => console.error("JSON error:", err));
-  }, []);
+  fetch(process.env.PUBLIC_URL + "/bookings-analytics.json")
+    .then(res => res.json())
+    .then(json => setData(json))
+    .catch(err => console.error("JSON load error:", err));
+}, []);
 
-  /* ================= DASHBOARD LOGIC ================= */
-  useEffect(() => {
-    if (!data.length) return;
 
-    const docs = [];
-    data.forEach(i =>
-      i.documents?.forEach(d => {
-        if (selectedCity === "ALL" || d.city === selectedCity) docs.push(d);
+  /* ================= HELPERS ================= */
+  const safeDocs = (cb) => {
+    data.forEach(item =>
+      item.documents?.forEach(doc => {
+        if (selectedCity !== "ALL" && doc.city !== selectedCity) return;
+        cb(doc);
       })
     );
+  };
 
-    /* DESTROY OLD CHARTS */
-    Object.values(charts.current).forEach(c => c?.destroy());
+  const getCities = () => {
+    const set = new Set();
+    data.forEach(i => i.documents?.forEach(d => d.city && set.add(d.city)));
+    return ["ALL", ...Array.from(set)];
+  };
 
-    /* ===== YEAR ===== */
-    const yearMap = {};
-    docs.forEach(d => {
-      const y = new Date(d.dateTime?.$date).getFullYear();
-      if (y) yearMap[y] = (yearMap[y] || 0) + 1;
+  /* ================= KPI CALCULATION ================= */
+  const calculateSummary = () => {
+    let totalOrders = 0;
+    let profit = 0;
+    let cancelled = 0;
+    let rescheduled = 0;
+
+    safeDocs(doc => {
+      totalOrders++;
+
+      if (doc.orderAmount) {
+        profit += Number(doc.orderAmount);
+      }
+
+      if (doc.bookingStatus === "CANCELLED") cancelled++;
+      if (doc.bookingStatus === "RESCHEDULED") rescheduled++;
+    });
+
+    setSummary({ totalOrders, profit, cancelled, rescheduled });
+  };
+
+  /* ================= CHART OPTIONS ================= */
+  const commonLegend = {
+    legend: {
+      display: true,
+      position: "bottom",
+      labels: {
+        color: "#e5e7eb",
+        font: { size: 11 }
+      }
+    }
+  };
+
+  /* ================= CHARTS ================= */
+
+  const drawYearChart = () => {
+    charts.current.year?.destroy();
+    const map = {};
+
+    safeDocs(d => {
+      const y = new Date(d?.dateTime?.$date).getFullYear();
+      if (y) map[y] = (map[y] || 0) + 1;
     });
 
     charts.current.year = new Chart(yearRef.current, {
       type: "bar",
       data: {
-        labels: Object.keys(yearMap),
-        datasets: [{ data: Object.values(yearMap), backgroundColor: "#38bdf8" }]
+        labels: Object.keys(map),
+        datasets: [{
+          label: "Orders",
+          data: Object.values(map),
+          backgroundColor: "#38bdf8",
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: commonLegend
       }
     });
+  };
 
-    /* ===== STATUS ===== */
-    const statusMap = {};
-    docs.forEach(d => {
+  const drawStatusChart = () => {
+    charts.current.status?.destroy();
+    const map = {};
+
+    safeDocs(d => {
       if (d.bookingStatus)
-        statusMap[d.bookingStatus] = (statusMap[d.bookingStatus] || 0) + 1;
+        map[d.bookingStatus] = (map[d.bookingStatus] || 0) + 1;
     });
 
     charts.current.status = new Chart(statusRef.current, {
       type: "doughnut",
       data: {
-        labels: Object.keys(statusMap),
-        datasets: [{ data: Object.values(statusMap) }]
+        labels: Object.keys(map),
+        datasets: [{
+          data: Object.values(map),
+          backgroundColor: ["#22c55e", "#ef4444", "#facc15"]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: commonLegend
       }
     });
+  };
 
-    /* ===== PAYMENT ===== */
-    const payMap = {};
-    docs.forEach(d => {
+  const drawTopCityChart = () => {
+    charts.current.city?.destroy();
+    const map = {};
+
+    safeDocs(d => {
+      if (d.city) map[d.city] = (map[d.city] || 0) + 1;
+    });
+
+    charts.current.city = new Chart(cityRef.current, {
+      type: "bar",
+      data: {
+        labels: Object.keys(map),
+        datasets: [{
+          data: Object.values(map),
+          backgroundColor: "#818cf8",
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: commonLegend
+      }
+    });
+  };
+
+  const drawPaymentChart = () => {
+    charts.current.payment?.destroy();
+    const map = {};
+
+    safeDocs(d => {
       if (d.paymentMethod)
-        payMap[d.paymentMethod] = (payMap[d.paymentMethod] || 0) + 1;
+        map[d.paymentMethod] = (map[d.paymentMethod] || 0) + 1;
     });
 
     charts.current.payment = new Chart(paymentRef.current, {
       type: "bar",
       data: {
-        labels: Object.keys(payMap),
-        datasets: [{ data: Object.values(payMap), backgroundColor: "#fb7185" }]
+        labels: Object.keys(map),
+        datasets: [{
+          data: Object.values(map),
+          backgroundColor: "#fb7185",
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: commonLegend
       }
     });
+  };
 
-    /* ===== MONTH ===== */
-    const monthMap = {};
-    docs.forEach(d => {
-      const dt = d.dateTime?.$date;
+  const drawMonthlyChart = () => {
+    charts.current.month?.destroy();
+    const map = {};
+
+    safeDocs(d => {
+      const dt = d?.dateTime?.$date;
       if (!dt) return;
-      const key = new Date(dt).toLocaleString("en", { month: "short", year: "numeric" });
-      monthMap[key] = (monthMap[key] || 0) + 1;
+      const key = new Date(dt).toLocaleString("en", {
+        month: "short",
+        year: "numeric"
+      });
+      map[key] = (map[key] || 0) + 1;
     });
 
     charts.current.month = new Chart(monthRef.current, {
       type: "line",
       data: {
-        labels: Object.keys(monthMap),
-        datasets: [{ data: Object.values(monthMap), borderColor: "#22d3ee" }]
+        labels: Object.keys(map),
+        datasets: [{
+          label: "Orders",
+          data: Object.values(map),
+          borderColor: "#22d3ee",
+          tension: 0.4,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: commonLegend
       }
     });
+  };
 
-    /* ===== MAP ===== */
-    if (mapRef.current) {
-      mapRef.current.remove();
-    }
+  const drawMap = () => {
+  if (!document.getElementById("map")) return;
 
-    mapRef.current = L.map("map").setView([22.5, 78.9], 5);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(mapRef.current);
+  if (mapInstance.current) {
+    mapInstance.current.remove();
+    mapInstance.current = null;
+  }
 
-    Object.entries(payMap).forEach(([city, count]) => {
-      if (!cityLatLng[city]) return;
-      L.circleMarker(cityLatLng[city], {
-        radius: Math.sqrt(count) * 4,
-        color: "#38bdf8",
-        fillOpacity: 0.6
-      })
-        .addTo(mapRef.current)
-        .bindTooltip(`${city}: ${count}`);
-    });
+  mapInstance.current = L.map("map", {
+    scrollWheelZoom: false,
+    dragging: !L.Browser.mobile
+  }).setView([22.5, 78.9], 5);
 
-  }, [data, selectedCity]);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: ""
+  }).addTo(mapInstance.current);
 
-  const cities = ["ALL", ...new Set(data.flatMap(i => i.documents?.map(d => d.city)))];
+  const cityCount = {};
+  safeDocs(d => {
+    if (d.city) cityCount[d.city] = (cityCount[d.city] || 0) + 1;
+  });
 
+  Object.entries(cityCount).forEach(([city, count]) => {
+    if (!cityLatLng[city]) return;
+    L.circleMarker(cityLatLng[city], {
+      radius: Math.sqrt(count) * 3,
+      color: "#38bdf8",
+      fillOpacity: 0.7
+    })
+      .addTo(mapInstance.current)
+      .bindTooltip(`${city}: ${count}`);
+  });
+};
+
+
+
+  /* ================= UPDATE DASHBOARD ================= */
+useEffect(() => {
+  if (!data.length) return;
+
+  calculateSummary();
+  drawYearChart();
+  drawStatusChart();
+  drawTopCityChart();
+  drawPaymentChart();
+  drawMonthlyChart();
+  drawMap();
+}, [
+  data,
+  selectedCity,
+  calculateSummary,
+  drawYearChart,
+  drawStatusChart,
+  drawTopCityChart,
+  drawPaymentChart,
+  drawMonthlyChart,
+  drawMap
+]);
+
+
+  /* ================= JSX ================= */
   return (
     <div className="dashboard">
 
-      <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-        {cities.map(c => <option key={c}>{c}</option>)}
-      </select>
+      {/* KPI + FILTER */}
+      <div className="kpiGrid">
+        <div className="kpiCard">
+          <h4>Total Orders</h4>
+          <p>{summary.totalOrders}</p>
+        </div>
 
-      <canvas ref={monthRef} />
-      <canvas ref={paymentRef} />
-      <canvas ref={statusRef} />
-      <canvas ref={yearRef} />
+        <div className="kpiCard">
+          <h4>Total Profit</h4>
+          <p>₹ {summary.profit.toLocaleString()}</p>
+        </div>
 
-      <div id="map" style={{ height: "350px", marginTop: "20px" }} />
+        <div className="kpiCard">
+          <h4>Cancelled</h4>
+          <p>{summary.cancelled}</p>
+        </div>
+
+        <div className="kpiCard filterCard">
+          <h4>Filter by City</h4>
+          <select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+            {getCities().map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ROW 2 */}
+      <div className="gridRow2">
+        <div className="card large">
+          <h3>Monthly Orders</h3>
+          <canvas ref={monthRef} />
+        </div>
+
+        <div className="card small">
+          <h3>Payment Method</h3>
+          <canvas ref={paymentRef} />
+        </div>
+      </div>
+
+      {/* ROW 3 */}
+      <div className="gridRow3">
+        <div className="card">
+          <h3>Booking Status</h3>
+          <canvas ref={statusRef} />
+        </div>
+
+        <div className="card">
+          <h3>Orders by Year</h3>
+          <canvas ref={yearRef} />
+        </div>
+
+        <div className="card mapCard">
+          <h3>Geography Based Traffic</h3>
+          <div id="map"></div>
+        </div>
+      </div>
 
     </div>
   );
 }
+
+
+
