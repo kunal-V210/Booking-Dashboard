@@ -24,7 +24,6 @@ export default function Dashboard() {
     cancelled: 0,
     rescheduled: 0,
   });
-  console.log(DataJson)
   /* ================= REFS ================= */
   const yearRef = useRef(null);
   const statusRef = useRef(null);
@@ -41,6 +40,10 @@ export default function Dashboard() {
 //     .then(json => setData(json))
 //     .catch(err => console.error("JSON load error:", err));
 // }, []);
+
+useEffect(() => {
+  setData(DataJson);
+}, []);
 
 
   /* ================= HELPERS ================= */
