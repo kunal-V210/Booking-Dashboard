@@ -16,7 +16,7 @@ const cityLatLng = {
 
 export default function Dashboard() {
   /* ================= STATE ================= */
-  const [data, setData] = useState(DataJson);
+  const data = DataJson
   const [selectedCity, setSelectedCity] = useState("ALL");
   const [summary, setSummary] = useState({
     totalOrders: 0,
@@ -41,9 +41,6 @@ export default function Dashboard() {
 //     .catch(err => console.error("JSON load error:", err));
 // }, []);
 
-useEffect(() => {
-  setData(DataJson);
-}, []);
 
 
   /* ================= HELPERS ================= */
